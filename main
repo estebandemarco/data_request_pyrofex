@@ -13,10 +13,10 @@ creds, _ = default()
 #spreadsheet auth and selection
 gc = gspread.authorize(creds)
 
-sg= gc.open("inversiones")
-sg2= gc.open("cotizaciones")
+sg= gc.open("xxxxxxxxxxxxx")
+
 worksheet = sg.sheet1
-worksheet2 = sg2.sheet1
+
 
 # Endpoint selection (depends on your broker account)
 api_url = "https://api.eco.xoms.com.ar/"
@@ -55,10 +55,10 @@ def write_to_sheet(data):
 
     # spread sheet cleaning
     worksheet.clear()
-    worksheet2.clear()
-    # Write the DataFrame in two spreadsheet
+
+    # Write the DataFrame 
     worksheet.update([data.columns.values.tolist()] + data.values.tolist())
-    worksheet2.update([data.columns.values.tolist()] + data.values.tolist())
+
 
 
 
