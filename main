@@ -1,0 +1,76 @@
+! pip install pyRofex
+
+import pyRofex
+from google.colab import auth
+auth.authenticate_user()
+import locale
+import time
+import pandas as pd
+import gspread
+from google.auth import default
+creds, _ = default()
+
+#spreadsheet auth and selection
+gc = gspread.authorize(creds)
+
+sg= gc.open("inversiones")
+sg2= gc.open("cotizaciones")
+worksheet = sg.sheet1
+worksheet2 = sg2.sheet1
+
+# Endpoint selection (depends on your broker account)
+api_url = "https://api.eco.xoms.com.ar/"
+ws_url = "wss://api.eco.xoms.com.ar/"
+
+pyRofex._set_environment_parameter("url", api_url, pyRofex.Environment.LIVE)
+pyRofex._set_environment_parameter("ws", ws_url, pyRofex.Environment.LIVE)
+
+#Initialize the environment
+pyRofex.initialize(user="xxxxxxxxxxxx",
+                   password="xxxxxxxxxxxx",
+                   account="xxxxxxxx",
+                   environment=pyRofex.Environment.LIVE)
+
+# Set the instrument to use
+instrument =['MERV - XMEV - AL30 - CI','MERV - XMEV - AL30 - 48hs',  'MERV - XMEV - AL30C - CI',  'MERV - XMEV - AL30C - 48hs',
+             'MERV - XMEV - AL30D - CI','MERV - XMEV - AL30D - 48hs','MERV - XMEV - GD30 - 48hs','MERV - XMEV - GD30 - CI',
+             'MERV - XMEV - GD30C - 48hs', 'MERV - XMEV - GD30C - CI','MERV - XMEV - GD30D - 48hs','MERV - XMEV - GD30D - CI',
+             'MERV - XMEV - S31L3 - CI', 'MERV - XMEV - SL3C - CI','MERV - XMEV - SL3D - CI','MERV - XMEV - X18L3 - CI','MERV - XMEV - XL3C - CI']
+
+# Get the data instrument
+entries = [pyRofex.MarketDataEntry.LAST, pyRofex.MarketDataEntry.NOMINAL_VOLUME]
+
+# Instrument iteration function
+def recorrer_lista(lista):
+    resultados = []
+    for objeto in lista:
+        resultado = pyRofex.get_market_data(objeto,entries)
+        resultados.append(resultado)
+    return pd.DataFrame.from_dict(resultados)
+
+# Write on google sheet
+def write_to_sheet(data):
+    # add 'instrument' as spreadsheet index
+    data.insert(0, 'Instrument', instrument)
+
+    # spread sheet cleaning
+    worksheet.clear()
+    worksheet2.clear()
+    # Write the DataFrame in two spreadsheet
+    worksheet.update([data.columns.values.tolist()] + data.values.tolist())
+    worksheet2.update([data.columns.values.tolist()] + data.values.tolist())
+
+
+
+# Updating loop
+
+while True:
+    try:
+        dato = pd.json_normalize(recorrer_lista(instrument)['marketData'])
+        dato_formateado = dato.astype(float)
+        print("Online", time.strftime("%H:%M:%S"))
+        write_to_sheet(dato_formateado.fillna(0).round(4))
+        time.sleep(4)
+    except KeyboardInterrupt:
+        print("Keyboard interrupt received. Exiting...")
+        break
